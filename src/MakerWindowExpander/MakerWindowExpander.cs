@@ -6,6 +6,7 @@ using ChaCustom;
 using HarmonyLib;
 using KKAPI;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace KK_K7A_Plugins
 {
@@ -27,6 +28,7 @@ namespace KK_K7A_Plugins
 
         static ConfigEntry<int> ColumnsCount { get; set; }
         static ConfigEntry<float> WindowScale { get; set; }
+        static ConfigEntry<bool> ExpandHeight { get; set; }
         static Dictionary<CustomSelectListCtrl, Vector2> DefaultSizeCaches { get; set; }
         
         internal static new ManualLogSource Logger;
@@ -41,8 +43,11 @@ namespace KK_K7A_Plugins
                 new ConfigDescription("Maker custom select window columns count", new AcceptableValueRange<int>(MinColNum, MaxColNum)));
             WindowScale = Config.Bind("Maker Window Settings", "Window Scale",  1.0f,
                 new ConfigDescription("Maker custom select window scale", new AcceptableValueRange<float>(MinScale, MaxScale)));
+            ExpandHeight = Config.Bind("Maker Window Settings", "Expand Height", true,
+                new ConfigDescription("Expand window height"));
             ColumnsCount.SettingChanged += OnSettingChanged;
             WindowScale.SettingChanged += OnSettingChanged;
+            ExpandHeight.SettingChanged += OnSettingChanged;
 
             DefaultSizeCaches = new Dictionary<CustomSelectListCtrl, Vector2>();
             KKAPI.Maker.MakerAPI.MakerExiting += OnMakerExit;
@@ -75,8 +80,17 @@ namespace KK_K7A_Plugins
             else
                 rect.sizeDelta = DefaultSizeCaches[ctrl];
 
-            rect.sizeDelta += new Vector2(ItemWidth * (ColumnsCount.Value - DefaultColCount), 0);
+            rect.sizeDelta = new Vector2(rect.sizeDelta.x + ItemWidth * (ColumnsCount.Value - DefaultColCount), ExpandHeight.Value ? rect.sizeDelta.y * (1.0f / WindowScale.Value) : rect.sizeDelta.y);
             rect.localScale = new Vector2(WindowScale.Value, WindowScale.Value);
+            
+            if (ExpandHeight.Value)
+            {
+                var listArea = ctrl.transform.Find("WinRect/ListArea");
+                var listRect = listArea.GetComponent<RectTransform>();
+                var listLayout = listArea.GetComponent<LayoutElement>();
+                listLayout.preferredHeight = rect.sizeDelta.y - 90f;
+                listRect.sizeDelta = new Vector2(listRect.sizeDelta.x, listLayout.preferredHeight);
+            }
         }
     }
 }
